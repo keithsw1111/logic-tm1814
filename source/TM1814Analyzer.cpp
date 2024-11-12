@@ -37,6 +37,7 @@ void TM1814Analyzer::WorkerThread() {
   int lednum = 0;
   int bitnum = 0;
   U64 ledstart = mTM1814->GetSampleNumber();
+  U32 lastC1 = 0xFFFFFFFF;
   for (;;) {
     assert(mTM1814->GetBitState() == BIT_LOW);
 
@@ -54,7 +55,26 @@ void TM1814Analyzer::WorkerThread() {
     ledval |= (th > T1H_MIN ? 1 : 0);
 
     if (bitnum == 32) {
-      if (ledval != 0 && lastLED == 0) {
+      if (lednum == 0) {
+        if ((ledval & 0xC0C0C0C0) != 0) {
+          mResults->AddMarker(end - ((mid - ledstart) / 2),
+                              AnalyzerResults::ErrorX,
+                              mSettings->mInputChannel);
+        } else {
+          mResults->AddMarker(end - ((mid - ledstart) / 2),
+                              AnalyzerResults::Dot, mSettings->mInputChannel);
+        }
+        lastC1 = ledval;
+      } else if (lednum == 1) {
+        if (ledval != ~lastC1) {
+          mResults->AddMarker(end - ((mid - ledstart) / 2),
+                              AnalyzerResults::ErrorX,
+                              mSettings->mInputChannel);
+        } else {
+          mResults->AddMarker(end - ((mid - ledstart) / 2),
+                              AnalyzerResults::Dot, mSettings->mInputChannel);
+        }
+      } else if (ledval != 0 && lastLED == 0) {
         // we add a cross marker if the previous LED was off
         mResults->AddMarker(end - ((mid - ledstart) / 2),
                             AnalyzerResults::ErrorX, mSettings->mInputChannel);
